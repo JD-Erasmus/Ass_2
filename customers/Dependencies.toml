@@ -140,7 +140,7 @@ modules = [
 
 [[package]]
 org = "john"
-name = "orders"
+name = "customers"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "io"},
@@ -151,7 +151,7 @@ dependencies = [
 	{org = "ballerinax", name = "mongodb"}
 ]
 modules = [
-	{org = "john", packageName = "orders", moduleName = "orders"}
+	{org = "john", packageName = "customers", moduleName = "customers"}
 ]
 
 

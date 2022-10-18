@@ -1,6 +1,6 @@
 [package]
 org = "john"
-name = "orders"
+name = "customers"
 version = "0.1.0"
 distribution = "2201.1.1"
 
