@@ -1,4 +1,7 @@
 
+public const TYPE_CREATE_CUSTOMER = 2;
+public const TYPE_GET_CUSTOMER = 3;
+
 //----------------------------
 //     REQUEST OBJECT
 //----------------------------

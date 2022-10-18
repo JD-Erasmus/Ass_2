@@ -6,30 +6,23 @@ import ballerina/lang.value;
 //-----------------------------------------------------------
 //                PRODUCER SETUP
 //-----------------------------------------------------------
-
-string[] serviceTopics = [
-    "ordering-service",
-    "delivery-service",
-    "customer-service"
-];
-
 kafka:ProducerConfiguration producerConfigs = {
-    clientId: "a2-client",
+    clientId: "customer-service",
     acks: "all",
     retryCount: 3
 };
 
-kafka:Producer producer = check new (kafka:DEFAULT_URL, producerConfigs);
+kafka:Producer producer = check new ("localhost:9092", producerConfigs);
 
 //-----------------------------------------------------------
 //                CONSUMER CONFIG
 //-----------------------------------------------------------
 string[] topics = [
-    "a2-client"
+    "customer-service"
 ];
 
 kafka:ConsumerConfiguration consumerConfig = {
-    groupId: "a2-client",
+    groupId: "customer-service",
     topics: topics,
     pollingInterval: 1,
     autoCommit: true
@@ -40,11 +33,10 @@ kafka:ConsumerConfiguration consumerConfig = {
 //-----------------------------------------------------------
 listener kafka:Listener consumer = new ("localhost:9092", consumerConfig);
 
-kafka:Service cService = service object {
+service kafka:Service on consumer {
     remote function onConsumerRecord(kafka:Caller caller, kafka:ConsumerRecord[] records) {
-        io:println("msg received");
-
         // Dispatched set of Kafka records to service, We process each one by one.
+        io:println("msg received");
         foreach var kafkaRecord in records {
             string|() msg = processKafkaRecord(kafkaRecord);
             if msg is string {
@@ -55,7 +47,7 @@ kafka:Service cService = service object {
             }
         }
     }
-};
+}
 
 //-----------------------------------------------------------
 //                PROCESS KAFKA RECORDS
@@ -81,13 +73,14 @@ function processRequest(string message) returns @tainted error? {
     //----------------------------------
     //     CONVERT STRING TO OBJECT
     //----------------------------------
-    any|error request = value:fromJsonString(message);
+    json|error jsonData = value:fromJsonString(message);
+    Request|error request = value:fromJsonWithType(check jsonData, Request);
 
     //----------------------------------
     //     CHECK IF ERROR OCCURED
     //----------------------------------
     if request is error {
-        io:println(request.detail());
+        io:println("Not a request: " + message);
         return request;
     }
     if request is Request {
@@ -101,14 +94,24 @@ function processRequest(string message) returns @tainted error? {
         //     return;
         // }
 
-        io:println(request.toString());
+        io:println(request.data.toString());
+
+        if request.reqType == 1 {
+            produceMessage(request.userTopic, {data: "hi", status: 0});
+        }
+        if request.reqType == TYPE_CREATE_CUSTOMER {
+            handleCreateCustomer(request);
+        }
+        if request.reqType == TYPE_GET_CUSTOMER {
+            handleGetCustomer(request);
+        }
     }
 }
 
 //-----------------------------------------------------------
 //         PRODUCE MESSAGE
 //-----------------------------------------------------------
-function produceMessage(string topic, Request data) {
+function produceMessage(string topic, Response data) {
 
     //-----------------------------------------
     //         CONVERT DATA TO JSON
@@ -139,57 +142,18 @@ function produceMessage(string topic, Request data) {
     }
 }
 
-public function main() {
-    worker UI_LOOP {
-        boolean running = true;
-        string input = "";
-        int|error option = 0;
-        io:println("working");
-        while running {
-
-            //--------------------------------
-            //    OPTIONS
-            //--------------------------------
-            io:println("");
-            io:println("");
-            io:println("1. Test calling ordering service");
-            io:println("2. Test calling delivery service");
-            io:println("3. Create customer");
-            io:println("4. get customer");
-
-            //--------------------------------
-            //    HANDLE OPTION INPUT
-            //--------------------------------
-            input = io:readln("Option: ");
-            option = 'int:fromString(input);
-            if option is error {
-                io:println("\nPlease enter a valid number as an option!\n");
-            } else {
-                if option == 1 {
-                    produceMessage(serviceTopics[0], {userTopic: "a2-client", reqType: 1, data: "hi"});
-                }
-                if option == 2 {
-                    produceMessage(serviceTopics[1], {userTopic: "a2-client", reqType: 1, data: "hi"});
-                }
-                if option == 3 {
-                    produceMessage(serviceTopics[2], {userTopic: "a2-client", reqType: TYPE_CREATE_CUSTOMER, data: ""});
-                }
-                if option == 4 {
-                    produceMessage(serviceTopics[2], {userTopic: "a2-client", reqType: TYPE_GET_CUSTOMER, data: "1234567"});
-                }
-            }
-        }
-    }
-
-    error? attach = consumer.attach(cService, "Consumer-Service");
-    if attach is error {
-        io:println("failed to attach service to listener");
-        panic attach;
-    } else {
-        error? err = consumer.'start();
-        if err is error {
-            io:println("failed to start kafka listener, exiting: ", err.detail());
-        }
+function handleCreateCustomer(Request request) {
+    boolean created = createCustomer("1234567", "some-pw");
+    if created {
+        produceMessage(request.userTopic, {status: 0, data: "ok"});
     }
 }
 
+function handleGetCustomer(Request request) {
+    Customer? customer = getCustomer(request.data);
+    if customer is () {
+        produceMessage(request.userTopic, {status: 1, data: "failed to get customer"});
+        return;
+    }
+    produceMessage(request.userTopic, {status: 0, data: customer.toJson().toJsonString()});
+}
