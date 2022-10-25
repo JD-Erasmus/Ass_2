@@ -7,6 +7,7 @@ import ballerina/lang.value;
 //                PRODUCER SETUP
 //-----------------------------------------------------------
 
+//An array of topic names stored as strings used when a topic has to bee created
 string[] serviceTopics = [
     "ordering-service",
     "delivery-service",
@@ -24,6 +25,7 @@ kafka:Producer producer = check new (kafka:DEFAULT_URL, producerConfigs);
 //-----------------------------------------------------------
 //                CONSUMER CONFIG
 //-----------------------------------------------------------
+// An array of a unique topic to which the client is subscribed
 string[] topics = [
     "a2-client"
 ];
@@ -38,8 +40,10 @@ kafka:ConsumerConfiguration consumerConfig = {
 //-----------------------------------------------------------
 //                CONSUMER SERVICE
 //-----------------------------------------------------------
+
 listener kafka:Listener consumer = new ("localhost:9092", consumerConfig);
 
+//Function to listen for messages from topics
 kafka:Service cService = service object {
     remote function onConsumerRecord(kafka:Caller caller, kafka:ConsumerRecord[] records) {
         io:println("msg received");
