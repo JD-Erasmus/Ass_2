@@ -1,3 +1,11 @@
+public const TYPE_CREATE_CUSTOMER = 2;
+public const TYPE_GET_CUSTOMER = 3;
+
+public type RequestT record {
+    string userTopic;
+    int reqType;
+    string data;
+};
 
 //----------------------------
 //     REQUEST OBJECT
@@ -33,8 +41,8 @@ public type Item record {
 };
 
 public type Customer record {
-    string _id; // customer number
-    string email;
+    string _id;
+    string customerNumber;
     string password;
 };
 
@@ -60,4 +68,3 @@ public type DeliveryStoreDetails record {
     string storeId;
     int quantity;
 };
-

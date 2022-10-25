@@ -146,6 +146,8 @@ function handleCreateCustomer(Request request) {
     boolean created = createCustomer("1234567", "some-pw");
     if created {
         produceMessage(request.userTopic, {status: 0, data: "ok"});
+    } else {
+        produceMessage(request.userTopic, {status: 1, data: "user already exists"});
     }
 }
 
